@@ -6,7 +6,8 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, ILike } from 'typeorm';
+import { Readable, Transform } from 'node:stream';
+import { Repository, FindOptionsWhere, ILike, SelectQueryBuilder } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { v4 as uuidv4 } from 'uuid';
 import { Shipment } from './entities/shipment.entity';
@@ -14,6 +15,7 @@ import { ShipmentStatusHistory } from './entities/shipment-status-history.entity
 import { CreateShipmentDto } from './dto/create-shipment.dto';
 import { UpdateShipmentDto } from './dto/update-shipment.dto';
 import { QueryShipmentDto } from './dto/query-shipment.dto';
+import { ExportShipmentsDto } from './dto/export-shipments.dto';
 import { ShipmentStatus } from '../common/enums/shipment-status.enum';
 import { UserRole } from '../common/enums/role.enum';
 import { User } from '../users/entities/user.entity';
@@ -37,9 +39,56 @@ export interface PaginatedShipments {
   totalPages: number;
 }
 
+type ShipmentExportFormat = ExportShipmentsDto['format'];
+
+type ShipmentExportRow = {
+  id: string;
+  trackingNumber: string;
+  shipperId: string;
+  carrierId: string | null;
+  origin: string;
+  destination: string;
+  cargoDescription: string;
+  weightKg: string | number;
+  volumeCbm: string | number | null;
+  price: string | number;
+  currency: string;
+  status: ShipmentStatus;
+  pickupDate: Date | string | null;
+  estimatedDeliveryDate: Date | string | null;
+  actualDeliveryDate: Date | string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+};
+
+interface ShipmentExportResult {
+  stream: Readable;
+  contentType: string;
+  fileName: string;
+}
+
 @Injectable()
 export class ShipmentsService {
   private readonly logger = new Logger(ShipmentsService.name);
+  private readonly exportColumns: Array<keyof ShipmentExportRow> = [
+    'id',
+    'trackingNumber',
+    'shipperId',
+    'carrierId',
+    'origin',
+    'destination',
+    'cargoDescription',
+    'weightKg',
+    'volumeCbm',
+    'price',
+    'currency',
+    'status',
+    'pickupDate',
+    'estimatedDeliveryDate',
+    'actualDeliveryDate',
+    'createdAt',
+    'updatedAt',
+  ];
 
   constructor(
     @InjectRepository(Shipment)
@@ -228,6 +277,31 @@ export class ShipmentsService {
     if (!shipment)
       throw new NotFoundException(`Shipment ${trackingNumber} not found`);
     return shipment;
+  }
+
+  async exportShipments(
+    user: User,
+    format: ShipmentExportFormat,
+  ): Promise<ShipmentExportResult> {
+    if (user.role !== UserRole.SHIPPER && user.role !== UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Only shippers and admins can export shipments',
+      );
+    }
+
+    const queryBuilder = this.buildExportQuery(user);
+    const rowStream = (await queryBuilder.stream()) as Readable;
+    const timeLabel = new Date().toISOString().replace(/[.:]/g, '-');
+
+    return {
+      stream:
+        format === 'csv'
+          ? this.createCsvExportStream(rowStream)
+          : this.createJsonExportStream(rowStream),
+      contentType:
+        format === 'csv' ? 'text/csv; charset=utf-8' : 'application/json; charset=utf-8',
+      fileName: `shipments-${user.role === UserRole.ADMIN ? 'all' : user.id}-${timeLabel}.${format}`,
+    };
   }
 
   async update(
@@ -462,5 +536,120 @@ export class ShipmentsService {
       relations: ['changedBy'],
       order: { changedAt: 'ASC' },
     });
+  }
+
+  private buildExportQuery(user: User): SelectQueryBuilder<Shipment> {
+    const queryBuilder = this.shipmentRepo
+      .createQueryBuilder('shipment')
+      .select([
+        'shipment.id AS "id"',
+        'shipment.trackingNumber AS "trackingNumber"',
+        'shipment.shipperId AS "shipperId"',
+        'shipment.carrierId AS "carrierId"',
+        'shipment.origin AS "origin"',
+        'shipment.destination AS "destination"',
+        'shipment.cargoDescription AS "cargoDescription"',
+        'shipment.weightKg AS "weightKg"',
+        'shipment.volumeCbm AS "volumeCbm"',
+        'shipment.price AS "price"',
+        'shipment.currency AS "currency"',
+        'shipment.status AS "status"',
+        'shipment.pickupDate AS "pickupDate"',
+        'shipment.estimatedDeliveryDate AS "estimatedDeliveryDate"',
+        'shipment.actualDeliveryDate AS "actualDeliveryDate"',
+        'shipment.createdAt AS "createdAt"',
+        'shipment.updatedAt AS "updatedAt"',
+      ])
+      .orderBy('shipment.createdAt', 'DESC');
+
+    if (user.role === UserRole.SHIPPER) {
+      queryBuilder.where('shipment.shipperId = :shipperId', {
+        shipperId: user.id,
+      });
+    }
+
+    return queryBuilder;
+  }
+
+  private createCsvExportStream(rowStream: Readable): Readable {
+    let wroteHeader = false;
+
+    const transformer = new Transform({
+      writableObjectMode: true,
+      transform: (chunk: ShipmentExportRow, _encoding, callback) => {
+        const row = this.normalizeExportRow(chunk);
+        const lines: string[] = [];
+
+        if (!wroteHeader) {
+          lines.push(`${this.exportColumns.join(',')}\n`);
+          wroteHeader = true;
+        }
+
+        lines.push(
+          `${this.exportColumns
+            .map((column) => this.escapeCsvValue(row[column]))
+            .join(',')}\n`,
+        );
+
+        callback(null, lines.join(''));
+      },
+      flush: (callback) => {
+        if (!wroteHeader) {
+          callback(null, `${this.exportColumns.join(',')}\n`);
+          return;
+        }
+
+        callback();
+      },
+    });
+
+    return rowStream.pipe(transformer);
+  }
+
+  private createJsonExportStream(rowStream: Readable): Readable {
+    let isFirstRow = true;
+
+    const transformer = new Transform({
+      writableObjectMode: true,
+      transform: (chunk: ShipmentExportRow, _encoding, callback) => {
+        const row = this.normalizeExportRow(chunk);
+        const prefix = isFirstRow ? '[' : ',';
+        isFirstRow = false;
+        callback(null, `${prefix}${JSON.stringify(row)}`);
+      },
+      flush: (callback) => {
+        callback(null, isFirstRow ? '[]' : ']');
+      },
+    });
+
+    return rowStream.pipe(transformer);
+  }
+
+  private normalizeExportRow(row: ShipmentExportRow): Record<string, string> {
+    return this.exportColumns.reduce<Record<string, string>>((accumulator, column) => {
+      accumulator[column] = this.formatExportValue(row[column]);
+      return accumulator;
+    }, {});
+  }
+
+  private formatExportValue(value: unknown): string {
+    if (value === null || value === undefined) {
+      return '';
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    return String(value);
+  }
+
+  private escapeCsvValue(value: string): string {
+    const escapedValue = value.replace(/"/g, '""');
+    if (/[",\n]/.test(value)) {
+      return `"${escapedValue}"`;
+    }
+
+    return escapedValue;
   }
 }

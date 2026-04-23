@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Readable } from 'node:stream';
+import { ILike } from 'typeorm';
 import { ShipmentsService } from './shipments.service';
 import { Shipment } from './entities/shipment.entity';
 import { ShipmentStatusHistory } from './entities/shipment-status-history.entity';
@@ -75,6 +77,15 @@ function mockRepo() {
   }>;
 }
 
+function mockQueryBuilder() {
+  return {
+    select: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    stream: jest.fn(),
+  };
+}
+
 // ── Suite ─────────────────────────────────────────────────────────────────────
 
 describe('ShipmentsService', () => {
@@ -144,6 +155,108 @@ describe('ShipmentsService', () => {
     it('throws NotFoundException when shipment does not exist', async () => {
       shipmentRepo.findOne.mockResolvedValue(null);
       await expect(service.findOne('missing')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  // ── search filters ─────────────────────────────────────────────────────────
+
+  describe('findAll()', () => {
+    it('applies case-insensitive partial origin and destination filters', async () => {
+      shipmentRepo.findAndCount.mockResolvedValue([[], 0]);
+      const shipper = makeUser({ id: 'shipper-1', role: UserRole.SHIPPER });
+
+      await service.findAll(shipper, {
+        origin: 'lag',
+        destination: 'abu',
+        page: 1,
+        limit: 20,
+      });
+
+      expect(shipmentRepo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            shipperId: 'shipper-1',
+            origin: ILike('%lag%'),
+            destination: ILike('%abu%'),
+          }),
+        }),
+      );
+    });
+  });
+
+  // ── export ────────────────────────────────────────────────────────────────
+
+  describe('exportShipments()', () => {
+    it('filters CSV exports to the requesting shipper', async () => {
+      const queryBuilder = mockQueryBuilder();
+      queryBuilder.stream.mockResolvedValue(Readable.from([]));
+      shipmentRepo.createQueryBuilder.mockReturnValue(queryBuilder as never);
+
+      const result = await service.exportShipments(
+        makeUser({ id: 'shipper-99', role: UserRole.SHIPPER }),
+        'csv',
+      );
+
+      expect(queryBuilder.where).toHaveBeenCalledWith(
+        'shipment.shipperId = :shipperId',
+        { shipperId: 'shipper-99' },
+      );
+      expect(result.contentType).toContain('text/csv');
+    });
+
+    it('does not scope admin JSON exports to a single shipper', async () => {
+      const queryBuilder = mockQueryBuilder();
+      queryBuilder.stream.mockResolvedValue(Readable.from([]));
+      shipmentRepo.createQueryBuilder.mockReturnValue(queryBuilder as never);
+
+      const result = await service.exportShipments(
+        makeUser({ id: 'admin-1', role: UserRole.ADMIN }),
+        'json',
+      );
+
+      expect(queryBuilder.where).not.toHaveBeenCalled();
+      expect(result.contentType).toContain('application/json');
+    });
+
+    it('streams CSV rows with a header row', async () => {
+      const queryBuilder = mockQueryBuilder();
+      queryBuilder.stream.mockResolvedValue(
+        Readable.from([
+          {
+            id: 'shipment-1',
+            trackingNumber: 'FF-TEST-001',
+            shipperId: 'shipper-1',
+            carrierId: null,
+            origin: 'Lagos',
+            destination: 'Abuja',
+            cargoDescription: 'Electronics',
+            weightKg: '100.00',
+            volumeCbm: null,
+            price: '5000.00',
+            currency: 'USD',
+            status: ShipmentStatus.PENDING,
+            pickupDate: null,
+            estimatedDeliveryDate: null,
+            actualDeliveryDate: null,
+            createdAt: '2026-04-24T10:00:00.000Z',
+            updatedAt: '2026-04-24T10:00:00.000Z',
+          },
+        ]),
+      );
+      shipmentRepo.createQueryBuilder.mockReturnValue(queryBuilder as never);
+
+      const result = await service.exportShipments(makeUser(), 'csv');
+      const chunks: Buffer[] = [];
+
+      await new Promise<void>((resolve, reject) => {
+        result.stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+        result.stream.on('end', () => resolve());
+        result.stream.on('error', reject);
+      });
+
+      const csvOutput = Buffer.concat(chunks).toString('utf8');
+      expect(csvOutput).toContain('id,trackingNumber,shipperId');
+      expect(csvOutput).toContain('FF-TEST-001');
     });
   });
 

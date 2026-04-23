@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ExecutionContext } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -13,6 +14,16 @@ import { ShipmentsModule } from './shipments/shipments.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
 import { DocumentsModule } from './documents/documents.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
+
+const shipmentCreateTracker = (context: ExecutionContext): string => {
+  const request = context.switchToHttp().getRequest<{
+    ip?: string;
+    user?: { id?: string };
+  }>();
+
+  return request.user?.id ?? request.ip ?? 'anonymous';
+};
 
 @Module({
   imports: [
@@ -57,6 +68,14 @@ import { DocumentsModule } from './documents/documents.module';
         ttl: 60_000, // 1 minute window
         limit: 10,   // 10 requests per minute (auth routes)
       },
+      {
+        name: 'shipmentCreate',
+        ttl: 60_000,
+        limit: 10,
+        getTracker: (_request, context) => shipmentCreateTracker(context),
+        errorMessage:
+          'Shipment creation rate limit exceeded. Authenticated users can create up to 10 shipments per minute.',
+      },
     ]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -78,6 +97,7 @@ import { DocumentsModule } from './documents/documents.module';
     NotificationsModule,
     AdminModule,
     DocumentsModule,
+    WebhooksModule,
   ],
   controllers: [AppController],
   providers: [
