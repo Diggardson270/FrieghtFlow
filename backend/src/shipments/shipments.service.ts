@@ -12,9 +12,6 @@ import {
   FindOptionsWhere,
   ILike,
   SelectQueryBuilder,
-  Between,
-  LessThanOrEqual,
-  MoreThanOrEqual,
 } from 'typeorm';
 import { AnalyticsQueryDto } from './dto/analytics-query.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -599,7 +596,9 @@ export class ShipmentsService {
     // Total revenue from COMPLETED shipments
     const revenueRow = await qb
       .clone()
-      .andWhere('s.status = :completed', { completed: ShipmentStatus.COMPLETED })
+      .andWhere('s.status = :completed', {
+        completed: ShipmentStatus.COMPLETED,
+      })
       .select('COALESCE(SUM(CAST(s.price AS numeric)), 0)', 'total')
       .getRawOne<{ total: string }>();
 

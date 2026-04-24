@@ -30,7 +30,11 @@ function makeUser(overrides: Partial<User> = {}): User {
   };
 }
 
-function makeQb(byStatusResult: object[], revenueResult: object, dailyResult: object[]) {
+function makeQb(
+  byStatusResult: object[],
+  revenueResult: object,
+  dailyResult: object[],
+) {
   let callCount = 0;
 
   const makeClone = () => {
@@ -103,8 +107,10 @@ describe('ShipmentsService.getAnalytics()', () => {
 
   it('scopes query to shipperId for SHIPPER role', async () => {
     const shipper = makeUser({ role: UserRole.SHIPPER, id: 'shipper-1' });
-    const qb = shipmentRepo.createQueryBuilder('s');
+    const qb = shipmentRepo.createQueryBuilder('s') as { where: jest.Mock };
     await service.getAnalytics(shipper, {});
-    expect(qb.where).toHaveBeenCalledWith('s.shipper_id = :uid', { uid: 'shipper-1' });
+    expect(qb.where).toHaveBeenCalledWith('s.shipper_id = :uid', {
+      uid: 'shipper-1',
+    });
   });
 });

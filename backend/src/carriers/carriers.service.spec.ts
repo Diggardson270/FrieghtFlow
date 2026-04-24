@@ -3,7 +3,6 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { CarriersService } from './carriers.service';
 import { Shipment } from '../shipments/entities/shipment.entity';
 import { ShipmentStatus } from '../common/enums/shipment-status.enum';
-import { UserRole } from '../common/enums/role.enum';
 import { User } from '../users/entities/user.entity';
 
 function makeShipment(overrides: Partial<Shipment> = {}): Shipment {
@@ -51,8 +50,17 @@ describe('CarriersService.getMyMetrics()', () => {
 
   it('calculates on-time rate correctly', async () => {
     shipmentRepo.find.mockResolvedValue([
-      makeShipment({ status: ShipmentStatus.COMPLETED, actualDeliveryDate: new Date('2024-01-09'), estimatedDeliveryDate: new Date('2024-01-10') }),
-      makeShipment({ id: 'ship-2', status: ShipmentStatus.COMPLETED, actualDeliveryDate: new Date('2024-01-12'), estimatedDeliveryDate: new Date('2024-01-10') }),
+      makeShipment({
+        status: ShipmentStatus.COMPLETED,
+        actualDeliveryDate: new Date('2024-01-09'),
+        estimatedDeliveryDate: new Date('2024-01-10'),
+      }),
+      makeShipment({
+        id: 'ship-2',
+        status: ShipmentStatus.COMPLETED,
+        actualDeliveryDate: new Date('2024-01-12'),
+        estimatedDeliveryDate: new Date('2024-01-10'),
+      }),
     ]);
 
     const metrics = await service.getMyMetrics('carrier-1');
