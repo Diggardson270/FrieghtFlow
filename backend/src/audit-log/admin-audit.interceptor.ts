@@ -23,7 +23,8 @@ export class AdminAuditInterceptor implements NestInterceptor {
     if (!user || user.role !== UserRole.ADMIN) return next.handle();
     if (!MUTATING_METHODS.has(req.method)) return next.handle();
 
-    const action = `${req.method} ${req.route?.path ?? req.path}`;
+    const route = req.route as { path?: string } | undefined;
+    const action = `${req.method} ${route?.path ?? req.path}`;
     const params = req.params as Record<string, string>;
     const targetId = params?.id ?? null;
 
@@ -33,7 +34,10 @@ export class AdminAuditInterceptor implements NestInterceptor {
           adminId: user.id,
           action,
           targetId,
-          metadata: { body: req.body as Record<string, unknown>, query: req.query as Record<string, unknown> },
+          metadata: {
+            body: req.body as Record<string, unknown>,
+            query: req.query as Record<string, unknown>,
+          },
         });
       }),
     );
