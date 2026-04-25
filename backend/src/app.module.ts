@@ -20,6 +20,8 @@ import { AuditLogModule } from './audit-log/audit-log.module';
 import { BidsModule } from './bids/bids.module';
 import { NotificationPreferencesModule } from './notification-preferences/notification-preferences.module';
 import { AdminAuditInterceptor } from './audit-log/admin-audit.interceptor';
+import { CarriersModule } from './carriers/carriers.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 const shipmentCreateTracker = (context: ExecutionContext): string => {
   const request = context.switchToHttp().getRequest<{
@@ -124,6 +126,8 @@ const throttlerErrorMessage = (context: ExecutionContext): string => {
     AuditLogModule,
     BidsModule,
     NotificationPreferencesModule,
+    CarriersModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [
