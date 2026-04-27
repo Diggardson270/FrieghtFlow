@@ -2,6 +2,7 @@ import { SandboxTabs } from './components/SandboxTabs';
 import type { ShipmentStep } from './components/ShipmentStepper';
 import type { CarrierQuote } from './components/QuoteComparisonTable';
 import type { ShipmentDocument } from './components/DocumentChecklist';
+import type { CostItem } from './components/CostBreakdownChart';
 
 const STEPPER_DEMOS: {
   title: string;
@@ -163,6 +164,28 @@ const CHECKLIST_DEMOS: { title: string; initialDocuments: ShipmentDocument[] }[]
   },
 ];
 
+const COST_DEMOS: { title: string; breakdown: CostItem[]; currency?: string }[] = [
+  {
+    title: 'Domestic Shipment',
+    breakdown: [
+      { label: 'Base Rate',       amount: 180.00 },
+      { label: 'Fuel Surcharge',  amount:  45.00 },
+      { label: 'Insurance',       amount:  22.50 },
+      { label: 'Handling',        amount:  15.00 },
+    ],
+  },
+  {
+    title: 'International Shipment',
+    breakdown: [
+      { label: 'Base Rate',       amount: 520.00 },
+      { label: 'Fuel Surcharge',  amount: 130.00 },
+      { label: 'Insurance',       amount:  78.00 },
+      { label: 'Customs',         amount:  95.00 },
+      { label: 'Handling',        amount:  35.00 },
+    ],
+  },
+];
+
 export default function SandboxPage() {
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-12">
@@ -173,6 +196,7 @@ export default function SandboxPage() {
           stepperDemos={STEPPER_DEMOS}
           quotes={MOCK_QUOTES}
           checklistDemos={CHECKLIST_DEMOS}
+          costDemos={COST_DEMOS}
         />
       </div>
     </main>

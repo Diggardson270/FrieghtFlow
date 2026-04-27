@@ -8,6 +8,8 @@ import { QuoteTableDemo } from './QuoteTableDemo';
 import type { CarrierQuote } from './QuoteComparisonTable';
 import { DocumentChecklistDemo } from './DocumentChecklistDemo';
 import type { ShipmentDocument } from './DocumentChecklist';
+import { CostBreakdownChart } from './CostBreakdownChart';
+import type { CostItem } from './CostBreakdownChart';
 
 interface StepperDemo {
   title: string;
@@ -23,21 +25,29 @@ interface ChecklistDemo {
   initialDocuments: ShipmentDocument[];
 }
 
+interface CostDemo {
+  title: string;
+  breakdown: CostItem[];
+  currency?: string;
+}
+
 interface SandboxTabsProps {
   stepperDemos: StepperDemo[];
   quotes: CarrierQuote[];
   checklistDemos: ChecklistDemo[];
+  costDemos: CostDemo[];
 }
 
 const TABS = [
   { id: 'stepper',   label: 'Shipment Timeline'    },
   { id: 'quotes',    label: 'Quote Comparison'      },
   { id: 'documents', label: 'Document Checklist'    },
+  { id: 'cost',      label: 'Cost Breakdown'        },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
 
-export function SandboxTabs({ stepperDemos, quotes, checklistDemos }: SandboxTabsProps) {
+export function SandboxTabs({ stepperDemos, quotes, checklistDemos, costDemos }: SandboxTabsProps) {
   const [active, setActive] = useState<TabId>('stepper');
 
   return (
@@ -112,6 +122,19 @@ export function SandboxTabs({ stepperDemos, quotes, checklistDemos }: SandboxTab
                 title={demo.title}
                 initialDocuments={demo.initialDocuments}
               />
+            ))}
+          </div>
+        )}
+
+        {active === 'cost' && (
+          <div className="grid gap-6 sm:grid-cols-2">
+            {costDemos.map((demo) => (
+              <div key={demo.title} className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-400">
+                  {demo.title}
+                </h3>
+                <CostBreakdownChart breakdown={demo.breakdown} currency={demo.currency} />
+              </div>
             ))}
           </div>
         )}
