@@ -1,7 +1,8 @@
-import { ShipmentStepper } from './components/ShipmentStepper';
+import { SandboxTabs } from './components/SandboxTabs';
 import type { ShipmentStep } from './components/ShipmentStepper';
+import type { CarrierQuote } from './components/QuoteComparisonTable';
 
-const DEMOS: {
+const STEPPER_DEMOS: {
   title: string;
   shipmentId: string;
   origin: string;
@@ -15,9 +16,7 @@ const DEMOS: {
     origin: 'Lagos, NG',
     destination: 'Abuja, NG',
     currentStatus: 'created',
-    timestamps: {
-      created: 'Apr 27, 2026 09:00 AM',
-    },
+    timestamps: { created: 'Apr 27, 2026 09:00 AM' },
   },
   {
     title: 'Picked Up',
@@ -77,45 +76,66 @@ const DEMOS: {
   },
 ];
 
-export default function ShipmentStepperDemoPage() {
+const MOCK_QUOTES: CarrierQuote[] = [
+  {
+    id: 'q1',
+    carrierName: 'SwiftHaul Logistics',
+    rating: 4.7,
+    estimatedDelivery: 'Apr 30, 2026',
+    deliveryDays: 3,
+    price: 245.0,
+    currency: 'USD',
+    insuranceIncluded: true,
+  },
+  {
+    id: 'q2',
+    carrierName: 'Eagle Freight Co.',
+    rating: 4.2,
+    estimatedDelivery: 'May 2, 2026',
+    deliveryDays: 5,
+    price: 189.5,
+    currency: 'USD',
+    insuranceIncluded: false,
+  },
+  {
+    id: 'q3',
+    carrierName: 'Meridian Cargo',
+    rating: 4.5,
+    estimatedDelivery: 'May 1, 2026',
+    deliveryDays: 4,
+    price: 210.0,
+    currency: 'USD',
+    insuranceIncluded: true,
+  },
+  {
+    id: 'q4',
+    carrierName: 'Atlas Express',
+    rating: 3.9,
+    estimatedDelivery: 'May 3, 2026',
+    deliveryDays: 6,
+    price: 175.0,
+    currency: 'USD',
+    insuranceIncluded: false,
+  },
+  {
+    id: 'q5',
+    carrierName: 'Horizon Shipping',
+    rating: 4.8,
+    estimatedDelivery: 'May 1, 2026',
+    deliveryDays: 4,
+    price: 225.0,
+    currency: 'USD',
+    insuranceIncluded: true,
+  },
+];
+
+export default function SandboxPage() {
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-12">
       <div className="mx-auto max-w-5xl">
-        <h1 className="mb-1 text-2xl font-bold text-gray-900">Shipment Timeline</h1>
-        <p className="mb-10 text-sm text-gray-500">
-          ShipmentStepper component — five lifecycle states
-        </p>
-
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {DEMOS.map((demo) => (
-            <div key={demo.shipmentId} className="flex flex-col rounded-xl border border-gray-200 bg-white shadow-sm">
-              {/* card header */}
-              <div className="border-b border-gray-100 px-5 py-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                    {demo.title}
-                  </span>
-                  <span className="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-xs text-gray-500">
-                    {demo.shipmentId}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-center gap-1.5 text-xs text-gray-500">
-                  <span className="font-medium text-gray-700">{demo.origin}</span>
-                  <span className="text-gray-300">→</span>
-                  <span className="font-medium text-gray-700">{demo.destination}</span>
-                </div>
-              </div>
-
-              {/* stepper */}
-              <div className="px-5 py-5">
-                <ShipmentStepper
-                  currentStatus={demo.currentStatus}
-                  timestamps={demo.timestamps}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+        <h1 className="mb-1 text-2xl font-bold text-gray-900">Component Sandbox</h1>
+        <p className="mb-8 text-sm text-gray-500">FrieghtFlow UI component demos</p>
+        <SandboxTabs stepperDemos={STEPPER_DEMOS} quotes={MOCK_QUOTES} />
       </div>
     </main>
   );
