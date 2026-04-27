@@ -1,6 +1,7 @@
 import { SandboxTabs } from './components/SandboxTabs';
 import type { ShipmentStep } from './components/ShipmentStepper';
 import type { CarrierQuote } from './components/QuoteComparisonTable';
+import type { ShipmentDocument } from './components/DocumentChecklist';
 
 const STEPPER_DEMOS: {
   title: string;
@@ -129,13 +130,50 @@ const MOCK_QUOTES: CarrierQuote[] = [
   },
 ];
 
+const CHECKLIST_DEMOS: { title: string; initialDocuments: ShipmentDocument[] }[] = [
+  {
+    title: 'All Uploaded',
+    initialDocuments: [
+      { type: 'bill_of_lading',        status: 'uploaded', uploadedAt: 'Apr 22, 2026 09:00 AM' },
+      { type: 'commercial_invoice',    status: 'uploaded', uploadedAt: 'Apr 22, 2026 09:05 AM' },
+      { type: 'packing_list',          status: 'uploaded', uploadedAt: 'Apr 22, 2026 09:10 AM' },
+      { type: 'certificate_of_origin', status: 'uploaded', uploadedAt: 'Apr 22, 2026 09:15 AM' },
+      { type: 'customs_declaration',   status: 'uploaded', uploadedAt: 'Apr 22, 2026 09:20 AM' },
+    ],
+  },
+  {
+    title: 'Partially Complete',
+    initialDocuments: [
+      { type: 'bill_of_lading',        status: 'uploaded', uploadedAt: 'Apr 25, 2026 10:30 AM' },
+      { type: 'commercial_invoice',    status: 'uploaded', uploadedAt: 'Apr 25, 2026 10:35 AM' },
+      { type: 'packing_list',          status: 'missing' },
+      { type: 'certificate_of_origin', status: 'optional' },
+      { type: 'customs_declaration',   status: 'missing' },
+    ],
+  },
+  {
+    title: 'Not Started',
+    initialDocuments: [
+      { type: 'bill_of_lading',        status: 'missing' },
+      { type: 'commercial_invoice',    status: 'missing' },
+      { type: 'packing_list',          status: 'missing' },
+      { type: 'certificate_of_origin', status: 'optional' },
+      { type: 'customs_declaration',   status: 'missing' },
+    ],
+  },
+];
+
 export default function SandboxPage() {
   return (
     <main className="min-h-screen bg-gray-50 px-6 py-12">
       <div className="mx-auto max-w-5xl">
         <h1 className="mb-1 text-2xl font-bold text-gray-900">Component Sandbox</h1>
         <p className="mb-8 text-sm text-gray-500">FrieghtFlow UI component demos</p>
-        <SandboxTabs stepperDemos={STEPPER_DEMOS} quotes={MOCK_QUOTES} />
+        <SandboxTabs
+          stepperDemos={STEPPER_DEMOS}
+          quotes={MOCK_QUOTES}
+          checklistDemos={CHECKLIST_DEMOS}
+        />
       </div>
     </main>
   );

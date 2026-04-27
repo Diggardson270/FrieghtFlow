@@ -6,6 +6,8 @@ import { ShipmentStepper } from './ShipmentStepper';
 import type { ShipmentStep } from './ShipmentStepper';
 import { QuoteTableDemo } from './QuoteTableDemo';
 import type { CarrierQuote } from './QuoteComparisonTable';
+import { DocumentChecklistDemo } from './DocumentChecklistDemo';
+import type { ShipmentDocument } from './DocumentChecklist';
 
 interface StepperDemo {
   title: string;
@@ -16,19 +18,26 @@ interface StepperDemo {
   timestamps: { [key in ShipmentStep]?: string | null };
 }
 
+interface ChecklistDemo {
+  title: string;
+  initialDocuments: ShipmentDocument[];
+}
+
 interface SandboxTabsProps {
   stepperDemos: StepperDemo[];
   quotes: CarrierQuote[];
+  checklistDemos: ChecklistDemo[];
 }
 
 const TABS = [
-  { id: 'stepper', label: 'Shipment Timeline' },
-  { id: 'quotes',  label: 'Quote Comparison'  },
+  { id: 'stepper',   label: 'Shipment Timeline'    },
+  { id: 'quotes',    label: 'Quote Comparison'      },
+  { id: 'documents', label: 'Document Checklist'    },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
 
-export function SandboxTabs({ stepperDemos, quotes }: SandboxTabsProps) {
+export function SandboxTabs({ stepperDemos, quotes, checklistDemos }: SandboxTabsProps) {
   const [active, setActive] = useState<TabId>('stepper');
 
   return (
@@ -93,6 +102,18 @@ export function SandboxTabs({ stepperDemos, quotes }: SandboxTabsProps) {
 
         {active === 'quotes' && (
           <QuoteTableDemo quotes={quotes} />
+        )}
+
+        {active === 'documents' && (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {checklistDemos.map((demo) => (
+              <DocumentChecklistDemo
+                key={demo.title}
+                title={demo.title}
+                initialDocuments={demo.initialDocuments}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
